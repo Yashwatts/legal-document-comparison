@@ -12,11 +12,10 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
-      '/Uploads': {
+      '/uploads': {
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
     },
   },
-  root: 'src' // Specify index.html location
 });
