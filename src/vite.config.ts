@@ -3,10 +3,8 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  root: '.', // Look for index.html in project root
   build: {
-    outDir: 'dist', // Output to root/dist
-    emptyOutDir: true // Clear dist folder
+    outDir: '../../dist', // Output to root/dist
   },
   server: {
     proxy: {
@@ -20,4 +18,5 @@ export default defineConfig({
       },
     },
   },
+  root: 'src' // Specify index.html location
 });
