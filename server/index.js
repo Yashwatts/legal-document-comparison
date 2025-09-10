@@ -4,6 +4,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import documentRoutes from './routes/documents.js';
+import 'dotenv/config';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,26 +12,22 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173', // Dynamic CORS for production
+  origin: process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173',
   credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Static uploads directory
-app.use('/uploads', express.static(path.join(__dirname, '../Uploads')));
+app.use('/Uploads', express.static(path.join(__dirname, '../Uploads')));
 
-// Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../..', 'dist')));
+  app.use(express.static(path.join(__dirname, '..', 'dist')));
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../..', 'dist', 'index.html'));
+    res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
   });
 }
 
-// Routes
 app.use('/api/documents', documentRoutes);
 
 app.get('/api/health', (req, res) => {
