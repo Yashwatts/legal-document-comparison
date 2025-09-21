@@ -3,8 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { extractTextFromFile } from '../utils/textExtraction.js';
-import { processDocumentDiff } from '../utils/diffProcessor.js';
-import { generateAIExplanations } from '../utils/aiProcessor.js';
+import { generateLegalDocumentAnalysis } from '../utils/aiProcessor.js';
 import fs from 'fs/promises';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,8 +11,13 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-const uploadDir = path.join(__dirname, '../Uploads');
-await fs.mkdir(uploadDir, { recursive: true });
+// Create upload directory
+const uploadDir = path.join(__dirname, '../uploads');
+// Create directory synchronously to avoid top-level await
+import fsSync from 'fs';
+if (!fsSync.existsSync(uploadDir)) {
+  fsSync.mkdirSync(uploadDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -78,13 +82,9 @@ router.post('/compare', upload.fields([
     const newText = await extractTextFromFile(newFile.path, newFile.mimetype);
     console.log('New text:', newText.slice(0, 100));
 
-    console.log('Processing differences...');
-    const diffResults = processDocumentDiff(oldText, newText);
-    console.log('Diff results:', JSON.stringify(diffResults, null, 2));
-
-    console.log('Generating AI explanations...');
-    const explanations = await generateAIExplanations(diffResults.changes, oldText, newText);
-    console.log('Explanations:', JSON.stringify(explanations, null, 2));
+    console.log('Analyzing legal documents...');
+    const analysis = await generateLegalDocumentAnalysis(oldText, newText);
+    console.log('Analysis results:', JSON.stringify(analysis, null, 2));
 
     const response = {
       comparison: {
@@ -96,17 +96,17 @@ router.post('/compare', upload.fields([
           name: newFile.originalname,
           text: newText
         },
-        differences: diffResults.formattedDiff,
-        changes: diffResults.changes.map((change, index) => ({
-          ...change,
-          explanation: explanations[index]
-        })),
+        oldDocumentSummary: analysis.oldDocumentSummary,
+        newDocumentSummary: analysis.newDocumentSummary,
+        changes: analysis.changes,
         summary: {
-          totalChanges: diffResults.changes.length,
-          additions: diffResults.changes.filter(c => c.type === 'addition').length,
-          deletions: diffResults.changes.filter(c => c.type === 'deletion').length,
-          modifications: diffResults.changes.filter(c => c.type === 'modification').length
-        }
+          totalChanges: analysis.totalChanges,
+          additions: analysis.additions,
+          deletions: analysis.deletions,
+          modifications: analysis.modifications
+        },
+        executiveSummary: analysis.executiveSummary,
+        riskAssessment: analysis.riskAssessment
       }
     };
 

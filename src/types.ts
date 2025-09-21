@@ -7,9 +7,33 @@ export interface DocumentComparison {
     name: string;
     text: string;
   };
-  differences: DiffSegment[];
-  changes: Change[];
+  oldDocumentSummary: ComprehensiveDocumentAnalysis;
+  newDocumentSummary: ComprehensiveDocumentAnalysis;
+  differences?: DiffSegment[];
+  changes: EnhancedChange[];
   summary: ChangeSummary;
+  executiveSummary: string;
+  riskAssessment: RiskAssessment;
+}
+
+export interface ComprehensiveDocumentAnalysis {
+  title: string;
+  executiveSummary: string;
+  documentType: string;
+  keyFindings: string[];
+  mainClauses: MainClause[];
+  obligations: string[];
+  rights: string[];
+  financialTerms: string[];
+  timeframes: string[];
+  terminationClauses: string[];
+  riskFactors: string[];
+  complianceRequirements: string[];
+}
+
+export interface MainClause {
+  text: string;
+  significance: 'High' | 'Medium' | 'Standard';
 }
 
 export interface DiffSegment {
@@ -17,23 +41,31 @@ export interface DiffSegment {
   text: string;
 }
 
+export interface EnhancedChange {
+  type: 'addition' | 'deletion' | 'modification';
+  category: string;
+  impact: 'low' | 'medium' | 'high';
+  businessImpact: string;
+  plainLanguage: string;
+  technicalDetail: string;
+  recommendedAction: string;
+  riskLevel: 'Low' | 'Medium' | 'High';
+  explanation: AIExplanation;
+}
+
 export interface Change {
   type: 'addition' | 'deletion' | 'modification';
-  text: string;
-  context: string;
+  category: string;
+  summary: string;
+  detail: string;
   impact: 'low' | 'medium' | 'high';
   explanation: AIExplanation;
-  originalSentence: string;
-  modifiedSentence: string;
-  originalHighlights: { text: string; type: 'deletion' | 'modification' }[];
-  modifiedHighlights: { text: string; type: 'addition' | 'modification' }[];
 }
 
 export interface AIExplanation {
   summary: string;
   detail: string;
-  impact: 'low' | 'medium' | 'high';
-  category: 'financial' | 'termination' | 'liability' | 'rights' | 'date' | 'general';
+  category: 'financial' | 'termination' | 'liability' | 'rights' | 'date' | 'general' | 'clause' | 'obligation' | 'duration' | 'risk' | 'compliance';
 }
 
 export interface ChangeSummary {
@@ -41,6 +73,16 @@ export interface ChangeSummary {
   additions: number;
   deletions: number;
   modifications: number;
+}
+
+export interface RiskAssessment {
+  overall: 'Low' | 'Medium' | 'High';
+  breakdown: {
+    high: number;
+    medium: number;
+    low: number;
+  };
+  recommendation: string;
 }
 
 export interface UploadedFile {

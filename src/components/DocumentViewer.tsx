@@ -1,76 +1,17 @@
 import React, { useState } from 'react';
-import { DiffSegment, Change } from '../types';
-import { DiffRenderer } from './DiffRenderer';
+import { DocumentComparison } from '../types';
 import { Eye, EyeOff } from 'lucide-react';
 
 interface DocumentViewerProps {
-  oldDocumentName: string;
-  newDocumentName: string;
-  differences: DiffSegment[];
-  changes: Change[];
+  comparison: DocumentComparison;
 }
 
-export function DocumentViewer({ oldDocumentName, newDocumentName, differences, changes }: DocumentViewerProps) {
+export function DocumentViewer({ comparison }: DocumentViewerProps) {
   const [showChangesOnly, setShowChangesOnly] = useState(false);
 
-  const filteredDifferences = showChangesOnly 
-    ? differences.filter(diff => diff.type !== 'unchanged')
-    : differences;
-
-  const getHighlightClass = (type: string) => {
-    switch (type) {
-      case 'addition':
-        return 'text-green-200 bg-green-800';
-      case 'deletion':
-        return 'text-red-200 bg-red-800';
-      case 'modification':
-        return 'text-yellow-200 bg-yellow-800';
-      default:
-        return 'text-gray-200';
-    }
-  };
-
-  const highlightText = (sentence: string, highlights: { text: string; type: string }[]) => {
-    if (!sentence || highlights.length === 0) {
-      return sentence || 'No text for this change.';
-    }
-
-    let result = sentence;
-    const parts: JSX.Element[] = [];
-    let lastIndex = 0;
-
-    // Sort highlights by their position in the sentence to avoid overlapping issues
-    const sortedHighlights = highlights
-      .map(h => ({
-        ...h,
-        index: sentence.indexOf(h.text)
-      }))
-      .filter(h => h.index !== -1)
-      .sort((a, b) => a.index - b.index);
-
-    sortedHighlights.forEach(({ text, type, index }, i) => {
-      if (index >= lastIndex) {
-        // Add text before the highlight
-        if (index > lastIndex) {
-          parts.push(<span key={`plain-${i}`}>{sentence.slice(lastIndex, index)}</span>);
-        }
-        // Add highlighted text
-        parts.push(
-          <span key={`highlight-${i}`} className={getHighlightClass(type)}>
-            {text}
-          </span>
-        );
-        lastIndex = index + text.length;
-      }
-    });
-
-    // Add remaining text after the last highlight
-    if (lastIndex < sentence.length) {
-      parts.push(<span key="plain-end">{sentence.slice(lastIndex)}</span>);
-    }
-
-    return parts.length > 0 ? parts : sentence;
-  };
+  const changes = comparison.changes || [];
+  const oldDocumentName = comparison.oldDocument.name;
+  const newDocumentName = comparison.newDocument.name;
 
   return (
     <div className="rounded-lg shadow-lg overflow-hidden" style={{ backgroundColor: '#040b13' }}>
@@ -115,29 +56,30 @@ export function DocumentViewer({ oldDocumentName, newDocumentName, differences, 
         {/* Original Document */}
         <div className="border-r border-gray-600">
           <div className="px-4 py-2 border-b border-gray-600" style={{ backgroundColor: '#0a1520' }}>
-            <h3 className="text-sm font-medium text-gray-300 truncate">
+            <h3 className="text-sm font-medium text-gray-300 break-words">
               Original: {oldDocumentName}
             </h3>
           </div>
           <div className="p-4 overflow-y-auto h-80">
             {showChangesOnly ? (
               <div className="space-y-2 text-sm">
-                <h4 className="font-medium text-white">Original Text</h4>
-                <ul className="list-disc pl-5 space-y-2 text-gray-200">
-                  {changes
-                    .filter(change => change.originalSentence)
-                    .map((change, index) => (
-                      <li key={index} className="py-1 px-2 rounded">
-                        {highlightText(change.originalSentence, change.originalHighlights)}
-                      </li>
-                    ))}
-                </ul>
+                <h4 className="font-medium text-white">Changes in Original</h4>
+                <div className="space-y-2 text-gray-200">
+                  {changes.map((change, index) => (
+                    <div key={index} className="p-2 rounded border-l-2 border-red-600" style={{ backgroundColor: '#0a1520' }}>
+                      <div className="text-xs text-red-400 mb-1">{change.type.toUpperCase()}</div>
+                      <div className="text-sm">{change.explanation.summary}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
-              <DiffRenderer 
-                differences={filteredDifferences} 
-                viewType="original"
-              />
+              <div className="text-gray-300 text-sm p-4">
+                <h4 className="font-medium mb-2">Original Document</h4>
+                <div className="max-h-64 overflow-y-auto">
+                  <p className="whitespace-pre-wrap">{comparison.oldDocument.text}</p>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -145,29 +87,30 @@ export function DocumentViewer({ oldDocumentName, newDocumentName, differences, 
         {/* Updated Document */}
         <div>
           <div className="px-4 py-2 border-b border-gray-600" style={{ backgroundColor: '#0a1520' }}>
-            <h3 className="text-sm font-medium text-gray-300 truncate">
+            <h3 className="text-sm font-medium text-gray-300 break-words">
               Updated: {newDocumentName}
             </h3>
           </div>
           <div className="p-4 overflow-y-auto h-80">
             {showChangesOnly ? (
               <div className="space-y-2 text-sm">
-                <h4 className="font-medium text-white">Modified Text</h4>
-                <ul className="list-disc pl-5 space-y-2 text-gray-200">
-                  {changes
-                    .filter(change => change.modifiedSentence)
-                    .map((change, index) => (
-                      <li key={index} className="py-1 px-2 rounded">
-                        {highlightText(change.modifiedSentence, change.modifiedHighlights)}
-                      </li>
-                    ))}
-                </ul>
+                <h4 className="font-medium text-white">Changes in Updated</h4>
+                <div className="space-y-2 text-gray-200">
+                  {changes.map((change, index) => (
+                    <div key={index} className="p-2 rounded border-l-2 border-green-600" style={{ backgroundColor: '#0a1520' }}>
+                      <div className="text-xs text-green-400 mb-1">{change.type.toUpperCase()}</div>
+                      <div className="text-sm">{change.plainLanguage || change.explanation.summary}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
-              <DiffRenderer 
-                differences={filteredDifferences} 
-                viewType="updated"
-              />
+              <div className="text-gray-300 text-sm p-4">
+                <h4 className="font-medium mb-2">Updated Document</h4>
+                <div className="max-h-64 overflow-y-auto">
+                  <p className="whitespace-pre-wrap">{comparison.newDocument.text}</p>
+                </div>
+              </div>
             )}
           </div>
         </div>

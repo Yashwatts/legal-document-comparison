@@ -48,57 +48,129 @@ function App() {
     if (!comparison) return;
     
     const doc = new jsPDF();
+    let yPosition = 30;
+    const pageHeight = 280;
+    const marginLeft = 20;
+    const pageWidth = 170;
     
-    // Set up the PDF
-    doc.setFontSize(20);
-    doc.text('Document Comparison Report', 20, 30);
-    
-    doc.setFontSize(12);
-    doc.text(`Original: ${comparison.oldDocument.name}`, 20, 50);
-    doc.text(`Updated: ${comparison.newDocument.name}`, 20, 60);
-    
-    // Summary section
-    doc.setFontSize(16);
-    doc.text('Summary', 20, 85);
-    doc.setFontSize(12);
-    doc.text(`Total Changes: ${comparison.summary.totalChanges}`, 20, 100);
-    doc.text(`Additions: ${comparison.summary.additions}`, 20, 110);
-    doc.text(`Deletions: ${comparison.summary.deletions}`, 20, 120);
-    doc.text(`Modifications: ${comparison.summary.modifications}`, 20, 130);
-    
-    // Changes section
-    let yPosition = 150;
-    doc.setFontSize(16);
-    doc.text('Detailed Changes', 20, yPosition);
-    yPosition += 20;
-    
-    comparison.changes.forEach((change, index) => {
-      if (yPosition > 250) {
+    // Helper function to add a new page if needed
+    const checkPageBreak = (requiredHeight: number) => {
+      if (yPosition + requiredHeight > pageHeight) {
         doc.addPage();
         yPosition = 30;
       }
-      
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.text(`${index + 1}. ${change.explanation.summary}`, 20, yPosition);
-      yPosition += 10;
-      
-      doc.setFont(undefined, 'normal');
-      doc.text(`Type: ${change.type.toUpperCase()}`, 25, yPosition);
-      yPosition += 8;
-      doc.text(`Impact: ${change.impact.toUpperCase()}`, 25, yPosition);
-      yPosition += 8;
-      doc.text(`Category: ${change.explanation.category}`, 25, yPosition);
-      yPosition += 8;
-      
-      // Split long text into multiple lines
-      const splitDetail = doc.splitTextToSize(change.explanation.detail, 160);
-      doc.text(splitDetail, 25, yPosition);
-      yPosition += splitDetail.length * 5 + 10;
-    });
+    };
     
-    // Save the PDF
-    doc.save('document-comparison-report.pdf');
+    // Helper function to add text with word wrapping
+    const addWrappedText = (text: string, fontSize: number = 12, isBold: boolean = false) => {
+      doc.setFontSize(fontSize);
+      doc.setFont(undefined, isBold ? 'bold' : 'normal');
+      const splitText = doc.splitTextToSize(text, pageWidth);
+      const textHeight = splitText.length * (fontSize * 0.35);
+      checkPageBreak(textHeight + 5);
+      doc.text(splitText, marginLeft, yPosition);
+      yPosition += textHeight + 5;
+    };
+    
+    // Title Page
+    doc.setFontSize(24);
+    doc.setFont(undefined, 'bold');
+    doc.text('Professional Legal Document Analysis Report', marginLeft, yPosition);
+    yPosition += 20;
+    
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, marginLeft, yPosition);
+    yPosition += 10;
+    doc.text(`Original Document: ${comparison.oldDocument.name}`, marginLeft, yPosition);
+    yPosition += 8;
+    doc.text(`Updated Document: ${comparison.newDocument.name}`, marginLeft, yPosition);
+    yPosition += 20;
+    
+    // Executive Summary
+    checkPageBreak(40);
+    addWrappedText('EXECUTIVE SUMMARY', 18, true);
+    yPosition += 5;
+    addWrappedText(comparison.executiveSummary, 11);
+    yPosition += 10;
+    
+    // Risk Assessment
+    checkPageBreak(30);
+    addWrappedText('RISK ASSESSMENT', 16, true);
+    addWrappedText(`Overall Risk Level: ${comparison.riskAssessment.overall}`, 12, true);
+    addWrappedText(`Recommendation: ${comparison.riskAssessment.recommendation}`, 11);
+    addWrappedText(`Risk Breakdown: High (${comparison.riskAssessment.breakdown.high}), Medium (${comparison.riskAssessment.breakdown.medium}), Low (${comparison.riskAssessment.breakdown.low})`, 11);
+    yPosition += 10;
+    
+    // Changes Summary
+    checkPageBreak(30);
+    addWrappedText('CHANGES SUMMARY', 16, true);
+    addWrappedText(`Total Changes: ${comparison.summary.totalChanges}`, 12, true);
+    addWrappedText(`Additions: ${comparison.summary.additions} | Deletions: ${comparison.summary.deletions} | Modifications: ${comparison.summary.modifications}`, 11);
+    yPosition += 10;
+    
+    // Document Analysis - Original
+    if (comparison.oldDocumentSummary) {
+      checkPageBreak(40);
+      addWrappedText('ORIGINAL DOCUMENT ANALYSIS', 16, true);
+      addWrappedText(`Document Type: ${comparison.oldDocumentSummary.documentType}`, 12, true);
+      addWrappedText('Executive Summary:', 12, true);
+      addWrappedText(comparison.oldDocumentSummary.executiveSummary, 10);
+      
+      if (comparison.oldDocumentSummary.keyFindings?.length > 0) {
+        addWrappedText('Key Findings:', 12, true);
+        comparison.oldDocumentSummary.keyFindings.slice(0, 5).forEach(finding => {
+          addWrappedText(`• ${finding}`, 10);
+        });
+      }
+      yPosition += 10;
+    }
+    
+    // Document Analysis - Updated
+    if (comparison.newDocumentSummary) {
+      checkPageBreak(40);
+      addWrappedText('UPDATED DOCUMENT ANALYSIS', 16, true);
+      addWrappedText(`Document Type: ${comparison.newDocumentSummary.documentType}`, 12, true);
+      addWrappedText('Executive Summary:', 12, true);
+      addWrappedText(comparison.newDocumentSummary.executiveSummary, 10);
+      
+      if (comparison.newDocumentSummary.keyFindings?.length > 0) {
+        addWrappedText('Key Findings:', 12, true);
+        comparison.newDocumentSummary.keyFindings.slice(0, 5).forEach(finding => {
+          addWrappedText(`• ${finding}`, 10);
+        });
+      }
+      yPosition += 10;
+    }
+    
+    // Detailed Changes Analysis
+    if (comparison.changes.length > 0) {
+      checkPageBreak(40);
+      addWrappedText('DETAILED CHANGES ANALYSIS', 16, true);
+      
+      comparison.changes.forEach((change, index) => {
+        checkPageBreak(35);
+        addWrappedText(`${index + 1}. ${change.explanation.summary}`, 12, true);
+        addWrappedText(`Type: ${change.type.toUpperCase()} | Risk Level: ${change.riskLevel} | Category: ${change.explanation.category}`, 10, true);
+        addWrappedText(`Business Impact: ${change.businessImpact}`, 10);
+        addWrappedText(`Plain Language: ${change.plainLanguage}`, 10);
+        addWrappedText(`Recommended Action: ${change.recommendedAction}`, 10);
+        yPosition += 5;
+      });
+    }
+    
+    // Footer on each page
+    const totalPages = doc.internal.pages.length - 1; // -1 because pages is 1-indexed
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+      doc.text(`Professional Legal Document Analysis Report - Page ${i} of ${totalPages}`, marginLeft, 290);
+    }
+    
+    // Save the PDF with a professional name
+    const timestamp = new Date().toISOString().split('T')[0];
+    doc.save(`Legal_Document_Analysis_Report_${timestamp}.pdf`);
   };
 
   return (
@@ -171,16 +243,13 @@ function App() {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               <div className="xl:col-span-2">
                 <DocumentViewer
-                  oldDocumentName={comparison.oldDocument.name}
-                  newDocumentName={comparison.newDocument.name}
-                  differences={comparison.differences}
-                  changes={comparison.changes}
+                  comparison={comparison}
                 />
               </div>
               <div>
                 <ChangesSummary
                   changes={comparison.changes}
-                  summary={comparison.summary}
+                  riskAssessment={comparison.riskAssessment}
                 />
               </div>
             </div>

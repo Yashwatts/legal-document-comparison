@@ -1,19 +1,22 @@
 import { useState } from 'react';
-import { Change } from '../types';
+import { EnhancedChange, RiskAssessment } from '../types';
 import { ChevronDown, ChevronRight, AlertTriangle, Info, TrendingUp } from 'lucide-react';
 
-interface ChangesSummaryProps {
-  changes: Change[];
-  summary: {
-    totalChanges: number;
-    additions: number;
-    deletions: number;
-    modifications: number;
-  };
-}
-
-export function ChangesSummary({ changes, summary }: ChangesSummaryProps) {
+export function ChangesSummary({ changes, riskAssessment }: { changes: EnhancedChange[], riskAssessment: RiskAssessment }) {
   const [expandedChanges, setExpandedChanges] = useState<Set<number>>(new Set());
+
+  // Filter out modifications, show only additions and deletions
+  const filteredChanges = changes.filter(change => 
+    change.type === 'addition' || change.type === 'deletion'
+  );
+
+  // Recalculate summary for filtered changes
+  const filteredSummary = {
+    totalChanges: filteredChanges.length,
+    additions: filteredChanges.filter(c => c.type === 'addition').length,
+    deletions: filteredChanges.filter(c => c.type === 'deletion').length,
+    modifications: 0 // Always 0 since we're filtering them out
+  };
 
   const toggleChange = (index: number) => {
     const newExpanded = new Set(expandedChanges);
@@ -68,34 +71,59 @@ export function ChangesSummary({ changes, summary }: ChangesSummaryProps) {
     <div className="rounded-lg shadow-lg overflow-hidden" style={{ backgroundColor: '#040b13' }}>
       <div className="px-6 py-4 border-b border-gray-600" style={{ backgroundColor: '#0a1520' }}>
         <h2 className="text-lg font-semibold text-white">Summary of Changes</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-white">{summary.totalChanges}</div>
+            <div className="text-2xl font-bold text-white">{filteredSummary.totalChanges}</div>
             <div className="text-sm text-gray-400">Total Changes</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{summary.additions}</div>
+            <div className="text-2xl font-bold text-green-600">{filteredSummary.additions}</div>
             <div className="text-sm text-gray-400">Additions</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-red-600">{summary.deletions}</div>
+            <div className="text-2xl font-bold text-red-600">{filteredSummary.deletions}</div>
             <div className="text-sm text-gray-400">Deletions</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-yellow-600">{summary.modifications}</div>
-            <div className="text-sm text-gray-400">Modifications</div>
+        </div>
+        
+        {/* Risk Assessment */}
+        <div className="mt-4 p-4 rounded-lg border border-gray-600" style={{ backgroundColor: '#040b13' }}>
+          <h3 className="text-md font-semibold text-white mb-2">Overall Risk Assessment</h3>
+          <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+            riskAssessment.overall === 'High' 
+              ? 'bg-red-100 text-red-800 border border-red-200' 
+              : riskAssessment.overall === 'Medium' 
+                ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                : 'bg-green-100 text-green-800 border border-green-200'
+          }`}>
+            {riskAssessment.overall} Risk
+          </div>
+          <p className="text-gray-300 mt-2 text-sm">{riskAssessment.recommendation}</p>
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            <div className="text-center text-xs">
+              <div className="text-red-400 font-semibold">{riskAssessment.breakdown.high}</div>
+              <div className="text-gray-400">High</div>
+            </div>
+            <div className="text-center text-xs">
+              <div className="text-yellow-400 font-semibold">{riskAssessment.breakdown.medium}</div>
+              <div className="text-gray-400">Medium</div>
+            </div>
+            <div className="text-center text-xs">
+              <div className="text-green-400 font-semibold">{riskAssessment.breakdown.low}</div>
+              <div className="text-gray-400">Low</div>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-h-96 overflow-y-auto">
-        {changes.length === 0 ? (
+        {filteredChanges.length === 0 ? (
           <div className="p-8 text-center text-gray-400">
-            No significant changes detected between the documents.
+            No additions or deletions detected between the documents.
           </div>
         ) : (
           <div className="divide-y divide-gray-600">
-            {changes.map((change, index) => (
+            {filteredChanges.map((change, index) => (
               <div key={index} className="p-4 transition-colors" style={{ backgroundColor: '#040b13' }}>
                 <div
                   className="flex items-center justify-between cursor-pointer"
@@ -115,7 +143,7 @@ export function ChangesSummary({ changes, summary }: ChangesSummaryProps) {
                           {change.explanation.category}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-400 line-clamp-2">
+                      <p className="text-sm text-gray-400">
                         {change.explanation.detail}
                       </p>
                     </div>
@@ -140,9 +168,11 @@ export function ChangesSummary({ changes, summary }: ChangesSummaryProps) {
                   <div className="mt-4 pt-4 border-t border-gray-600">
                     <div className="rounded-md p-3 mb-3" style={{ backgroundColor: '#0a1520' }}>
                       <h4 className="text-sm font-medium text-white mb-2">Changed Text:</h4>
-                      <p className="text-sm text-gray-300 font-mono p-2 rounded border border-gray-600" style={{ backgroundColor: '#040b13' }}>
-                        "{change.text.slice(0, 300)}{change.text.length > 300 ? '...' : ''}"
-                      </p>
+                      <div className="max-h-32 overflow-y-auto">
+                        <p className="text-sm text-gray-300 font-mono p-2 rounded border border-gray-600 whitespace-pre-wrap" style={{ backgroundColor: '#040b13' }}>
+                          "{change.plainLanguage}"
+                        </p>
+                      </div>
                     </div>
                     <div className="rounded-md p-3" style={{ backgroundColor: '#0a1520' }}>
                       <h4 className="text-sm font-medium text-white mb-2">Detailed Explanation:</h4>

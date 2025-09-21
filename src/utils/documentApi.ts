@@ -1,7 +1,7 @@
 import { UploadedFile, DocumentComparison } from '../types';
 
 // Use relative URL in production, fallback to localhost for dev
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3002/api';
 
 export async function compareDocuments(
   oldFile: UploadedFile, 
