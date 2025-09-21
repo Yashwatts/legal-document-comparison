@@ -11,10 +11,17 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
+
+console.log(`🔧 Environment: ${process.env.NODE_ENV}`);
+console.log(`🔧 Port: ${PORT}`);
+console.log(`🔧 Host: ${HOST}`);
 
 // Middleware
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? false : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+  origin: process.env.NODE_ENV === 'production' ? 
+    [process.env.FRONTEND_URL, process.env.RENDER_EXTERNAL_URL].filter(Boolean) : 
+    ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://127.0.0.1:3002'],
   credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -34,7 +41,15 @@ app.use((req, res, next) => {
 });
 
 // Static uploads directory
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+const uploadsPath = path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadsPath));
+
+// Ensure uploads directory exists
+import fs from 'fs';
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+  console.log('📁 Created uploads directory');
+}
 
 // Serve frontend static files in both production and development (after API routes)
 if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'development') {
@@ -42,17 +57,34 @@ if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'developme
   // SPA fallback: catch all non-API routes and serve index.html
   app.get('*', (req, res) => {
     if (!req.path.startsWith('/api/') && !req.path.startsWith('/uploads')) {
-      res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+      const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error('Error serving index.html:', err);
+          res.status(500).send('Server Error');
+        }
+      });
     } else {
       res.status(404).send('Not Found');
     }
   });
 }
 
-app.listen(PORT, '127.0.0.1', (err) => {
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  res.status(500).json({ 
+    error: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message 
+  });
+});
+
+app.listen(PORT, HOST, (err) => {
   if (err) {
     console.error('Error starting server:', err);
     process.exit(1);
   }
-  console.log(`✅ Server running on http://127.0.0.1:${PORT}`);
+  console.log(`✅ Server running on http://${HOST}:${PORT}`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`🌐 Production server ready for external connections`);
+  }
 });
